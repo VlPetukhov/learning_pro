@@ -65,6 +65,8 @@ AppAsset::register($this);
     </div>
 </div>
 
+<?php echo Yii::t('app', 'TEST')?>
+
 <footer class="footer">
     <div class="container">
         <p class="pull-left">&copy; My Company <?= date('Y') ?></p>
