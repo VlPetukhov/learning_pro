@@ -12,12 +12,31 @@ use Yii;
 
 class LocalFileStorage extends FileStorageBase
 {
-    const STORAGE_TABLE_NAME = 'local_storage_files';
+    const STORAGES_TABLE_NAME = 'local_storage_storages';
+
+    const FILES_TABLE_NAME = 'local_storage_files';
+
+    const PROTECTED_STORAGES_DIR_NAME = 'file_storages';
 
     /**
-     * @var string directory file storages
+     * @var string public storages directory name
      */
-    protected $_directoryName;
+    protected $_publicStoragesDirectory;
+
+    /**
+     * @var string protected storages directory name
+     */
+    protected $_protectedStoragesDirectory;
+
+    /**
+     * @var string storage directory name
+     */
+    protected $_storageName;
+
+    /**
+     * @var integer storageId
+     */
+    protected $_storageId;
 
     /**
      * @var \yii\db\Connection
@@ -26,28 +45,36 @@ class LocalFileStorage extends FileStorageBase
 
     /**
      * @param array $storageName
-     * @param null | \yii\db\Connection $dbConnection
+     * @param array $options
      * @throws \ErrorException
      */
-    public function __construct($storageName, $directoryName = null, $dbConnection = null)
+    public function __construct($storageName, array $options = [])
     {
-        if( ! $this->storageExists($storageName)) {
-            $this->createNewStorage($storageName);
-        }
-
         $this->_storageName = $storageName;
 
-        if(isset($dbConnection) && $dbConnection instanceof \yii\db\Connection) {
+        if(isset($option['dbConnection']) && $option['dbConnection'] instanceof \yii\db\Connection) {
 
-            $this->_dbConnection = $dbConnection;
+            $this->_dbConnection = $option['dbConnection'];
         } else {
             $this->_dbConnection = Yii::$app->db;
         }
 
-        if($directoryName && is_string($directoryName)) {
-            $this->_directoryName = $directoryName;
+        if($option['publicStoragesDirectory'] && is_string($option['publicStoragesDirectory'])) {
+            $this->_publicStoragesDirectory = $option['publicStoragesDirectory'];
         } else {
-            $this->_directoryName = Yii::getAlias('@common') . DIRECTORY_SEPARATOR . 'fileStorage' . DIRECTORY_SEPARATOR;
+            $this->_publicStoragesDirectory = Yii::getAlias('@web') . DIRECTORY_SEPARATOR;
+        }
+
+        if($option['protectedStoragesDirectory'] && is_string($option['protectedStoragesDirectory'])) {
+            $this->_protectedStoragesDirectory = $option['protectedStoragesDirectory'];
+        } else {
+            $this->_protectedStoragesDirectory = Yii::getAlias('@common') .
+                                                 DIRECTORY_SEPARATOR .
+                                                 self::PROTECTED_STORAGES_DIR_NAME .
+                                                 DIRECTORY_SEPARATOR;
+        }
+        if( ! $this->storageExists($storageName)) {
+            $this->createNewStorage($storageName);
         }
 
     }
@@ -90,13 +117,19 @@ class LocalFileStorage extends FileStorageBase
      */
     protected function storageExists($storageName)
     {
-        $tableName = self::STORAGE_TABLE_NAME;
-        //checking of db record existence
-        $sql = "SELECT id FROM {$tableName} WHERE storage = :storage AND sub_folder = 0 LIMIT 1";
+        $tableName = self::STORAGES_TABLE_NAME;
+        //checking of db record existence - there should be at least one record with given parameters
+        $sql = "SELECT id, public FROM {$tableName} WHERE storage = :storage LIMIT 1";
 
-        $queryResult = $this->_dbConnection->createCommand($sql, [':storage' => $storageName])->queryScalar();
+        $queryResult = $this->_dbConnection->createCommand($sql, [':storage' => $storageName])->queryOne();
 
-        $result = ( false !== $queryResult ) && $this->checkStorageDirectory($storageName);
+        if( $results = ( false !== $queryResult)) {
+            $this->_storageId = (int)$queryResult['id'];
+            $this->_public = (bool)$queryResult['public'];
+
+            $this->checkStorageDirectory($storageName);
+
+        }
 
         return $result;
     }

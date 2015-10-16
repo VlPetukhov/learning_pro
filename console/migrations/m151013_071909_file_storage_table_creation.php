@@ -8,11 +8,11 @@ class m151013_071909_file_storage_table_creation extends Migration
     public function up()
     {
         $this->createTable(
-            LocalFileStorage::STORAGE_TABLE_NAME,
+            LocalFileStorage::FILES_TABLE_NAME,
             [
                 'id' => $this->primaryKey(),
-                'storage' => $this->string(80)->notNull(),
-                'sub_folder' => $this->integer()->notNull(),
+                'storage_id' => $this->integer()->notNull(),
+                'sub_folder_id' => $this->integer()->notNull(),
                 'original_name' => $this->string()->notNull(),
                 'local_name' => $this->string()->notNull(),
                 'uploaded' => $this->timestamp()->notNull() . ' DEFAULT NOW()',
@@ -26,7 +26,7 @@ class m151013_071909_file_storage_table_creation extends Migration
 
     public function down()
     {
-        $this->dropTable(LocalFileStorage::STORAGE_TABLE_NAME);
+        $this->dropTable(LocalFileStorage::FILES_TABLE_NAME);
     }
 
     /*
